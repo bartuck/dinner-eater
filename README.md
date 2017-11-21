@@ -1,1 +1,1 @@
-# dinner-eaters
+# dinner-eater

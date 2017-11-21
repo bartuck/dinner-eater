@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Obiadożercy</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
+    <script src="js/lib/angular.min.js"></script>
+    <script src="js/app.js"></script>
+    <style>
+        label, form {
+            display: block;
+            width: 100%;
+        }
+        table table tr:first-child td {
+            border: none;
+            padding-top: 0;
+        }
+        table table tr td:first-child {
+            padding-left: 0;
+            width: 25%;
+        }
+        table table tr td:nth-first-child(2) {
+            width: 40;
+        }
+        table table tr td:last-child {
+            padding-right: 0;
+            text-align: right;
+            width: 15%;
+        }
+        table table tr td:nth-last-child(2) {
+            width: 20%;
+        }
+        em {
+            color: red;
+        }
+        .btn-margin-top {
+            margin-top: 26px;
+        }
+        .form-invalid-info {
+            display: none;
+            color: red;
+        }
+        form.ng-invalid .form-invalid-info {
+            display: block;
+        }
+        .payment-status {
+            text-decoration: line-through;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid" ng-app="app">
+
+        <br>
+        <h1>
+            Obiadożercy
+        </h1>
+        <nav class="nav flex-column">
+            <a href="#payments" title="Płatności" class="nav-link">Płatności</a>
+            <a href="#users" title="Użytkownicy" class="nav-link">Użytkownicy</a>
+        </nav>
+
+        <div ng-controller="BaseController">
+
+            <table id="payments" class="table table-main">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Kiedy?</th>
+                        <th>Akcje</th>
+                        <th>Skąd?</th>
+                        <th>Kto płacił?</th>
+                        <th>Kto jest winien komu, za co i ile?</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="order in orders">
+                        <td>
+                            {{ $index + 1 }}
+                        </td>
+                        <td>
+                            {{ order.date_time }}
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-danger" ng-click="removeOrder(order.id)">
+                                Usuń
+                            </button>
+                        </td>
+                        <td>
+                            {{ order.order_from }}
+                        </td>
+                        <td>
+                            {{ getUserById(order.user_id) }}
+                        </td>
+                        <td>
+                            <table class="table">
+                                <tr ng-repeat="payment in order.payments" ng-class="getPaymentCssClass(payment.status)">
+                                    <td>{{ getUserById(payment.user_id) }}</td>
+                                    <td>{{ payment.what }}</td>
+                                    <td>{{ payment.cost }} zł</td>
+                                    <td>
+                                        <input
+                                            type="checkbox"
+                                            ng-true-value="1"
+                                            ng-false-value="0"
+                                            ng-model="payment.status"
+                                            ng-change="updatePayment(payment)">
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <form name="orderForm" ng-submit="addOrder(orderForm)" class="row">
+                <div class="col-md-12">
+                    <div class="form-invalid-info btn-margin-top">
+                        Uzupełnij wszystkie pola po lewej i po prawej stronie!
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label>
+                            Kiedy?<em>*</em>
+                            <input type="date" name="date_time" ng-model="newOrder.date_time" required class="form-control">
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            Skąd?<em>*</em>
+                            <input type="text" name="order_from" ng-model="newOrder.order_from" required class="form-control">
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            Kto płacił?<em>*</em>
+                            <select ng-model="newOrder.user_id" required
+                                    ng-options="user.id as user.name for user in users track by user.id"
+                                    class="form-control">
+                                <option value>Użytkownik</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <h3>Podgląd dłużników</h3>
+                        <ul>
+                            <li ng-repeat="paymentPreview in newOrder.payments" class="btn-margin-top">
+                                {{ getUserById(paymentPreview.user_id) }}: {{ paymentPreview.cost }} zł
+                                <button type="button" ng-click="deleteTempPayment($index)" class="btn btn-sm btn-danger">Usuń</button>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label>
+                            Kto wisi kasę?
+                            <select ng-model="newPayment.user_id"
+                                    ng-options="user.id as user.name for user in users track by user.id"
+                                    class="form-control">
+                                <option value>Użytkownik</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            Za co?
+                            <input type="text" ng-model="newPayment.what" class="form-control">
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            Ile?
+                            <input type="number" ng-model="newPayment.cost" class="form-control">
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <button type="button" ng-click="addPayment()" class="btn btn-success btn-margin-top">
+                            Dodaj dłużnika-nikczemnika &amp; kolejny
+                        </button>
+                    </div>
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-success btn-margin-top">
+                            Dodaj zamówienie
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <div id="users" class="row">
+                <div class="col-md-12">
+                    <h3>Użytkownicy</h3>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-12">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Nazwa</th>
+                                <th>Konto</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="user in users">
+                                <td>
+                                    {{ $index + 1 }}
+                                </td>
+                                <td>
+                                    {{ user.name }}
+                                </td>
+                                <td>
+                                    {{ user.account }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <br><br>
+
+            <footer>
+                Created by
+                <a href="mailto:antonowicz.bartosz@gmail.com" title="Bartosz Antonowicz">
+                    Bartosz Antonowicz
+                </a>
+            </footer>
+
+        </div>
+    </div>
+</body>
+
+</html>
